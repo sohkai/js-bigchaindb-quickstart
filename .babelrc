@@ -1,0 +1,13 @@
+{
+    'presets': [['latest', { es2015: { modules: false } }]],
+    'plugins': [
+        'transform-object-assign',
+        'transform-object-rest-spread',
+        'transform-react-display-name',
+        [ 'transform-runtime', {
+            'polyfill': false,
+            'regenerator': false
+        } ]
+    ],
+    'sourceMaps': true
+}
