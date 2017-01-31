@@ -1,5 +1,7 @@
 # JavaScript quickstart for BigchainDB
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/sohkai/js-bigchaindb-quickstart.svg)](https://greenkeeper.io/)
+
 > :bangbang: High chance of :fire: and :rage: ahead if you expect this to be production-ready
 
 Some naive helpers to get you on your way to making some transactions :boom:, if you'd like to use
