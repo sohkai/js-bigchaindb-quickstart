@@ -1,10 +1,10 @@
 import { Buffer } from 'buffer';
-import crypto from 'crypto';
 
 import base58 from 'bs58';
 import clone from 'clone';
 import cc from 'five-bells-condition';
 import nacl from 'tweetnacl';
+import sha3 from 'js-sha3';
 import stableStringify from 'json-stable-stringify';
 import uuid from 'uuid';
 
@@ -207,10 +207,10 @@ function hashTransaction(transaction) {
 }
 
 function sha256Hash(data) {
-    return crypto
-        .createHash('sha256')
+    return sha3.sha3_256
+        .create()
         .update(data)
-        .digest('hex');
+        .hex();
 }
 
 function serializeTransactionWithoutFulfillments(transaction) {

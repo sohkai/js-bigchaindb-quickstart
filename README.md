@@ -13,9 +13,6 @@ bundler there, of which I expect you'll know quite well ([otherwise, go check ou
 
 Srs, just read through [index.js](./index.js) and see if you can make any sense of it.
 
-> :warning: You might want to check out the [current problems](#current-problems-that-block-usage)
-  before commiting too far.
-
 The expected flow for making transactions:
 
 1. Go get yourself some keypairs! Just make a `new Keypair()` (or a whole bunch of them, nobody's
@@ -46,30 +43,15 @@ Alright, alright, so you've made a couple transactions. Now what? Do I hear you 
 1. Sign that transaction with `signTransaction()`!
 1. `POST` to the server, and watch the :dollar:s drop, man.
 
-## Current Problems That Block Usage
+## Needs for speeds
 
-A number of things I have no idea how to solve :fearful::
+This implementation plays "safe" by using JS-native (or downgradable) libraries for its
+crypto-related functions to keep compatabilities with the browser. If that makes you :unamused: and
+you'd rather go :godmode: with some :zap: :zap:, you can try using some of these to go as fast as a
+:speedboat::
 
-### SHA256 in JS doesn't match up with Python's
-
-JavaScript:
-
-```js
-tx = '{"operation":"CREATE","transaction":{"asset":{"data":{},"divisible":false,"id":"abe4cedb-bc8f-4115-a5e8-e3d225115770","refillable":false,"updatable":false},"conditions":[{"amount":1,"cid":0,"condition":{"cid":0,"details":{"bitmask":32,"public_key":"CGofQAC6xdhATnwbQU1Nj3QALTve2nErHT2RCxjqa6Yk","signature":null,"type":"fulfillment","type_id":4},"owners_after":["CGofQAC6xdhATnwbQU1Nj3QALTve2nErHT2RCxjqa6Yk"],"uri":"cc:4:20:p30HfwAxgDwv2iIGrQWU7y48OqxZgzq8dHH0kru9_I0:96"}}],"fulfillments":[{"fid":0,"fulfillment":null,"input":null,"owners_before":["CGofQAC6xdhATnwbQU1Nj3QALTve2nErHT2RCxjqa6Yk"]}],"metadata":null,"operation":null},"version":1}', 'utf8';
-
-sha256 = crypto.createHash('sha256').update(tx).digest('hex');
-
-// 6d7315a5185bd5a5e1ce027132ea0eb597fe2da61bff091cb94902bc8e997d03
-```
-
-Python:
-
-```py
-tx = '{"operation":"CREATE","transaction":{"asset":{"data":{},"divisible":false,"id":"abe4cedb-bc8f-4115-a5e8-e3d225115770","refillable":false,"updatable":false},"conditions":[{"amount":1,"cid":0,"condition":{"cid":0,"details":{"bitmask":32,"public_key":"CGofQAC6xdhATnwbQU1Nj3QALTve2nErHT2RCxjqa6Yk","signature":null,"type":"fulfillment","type_id":4},"owners_after":["CGofQAC6xdhATnwbQU1Nj3QALTve2nErHT2RCxjqa6Yk"],"uri":"cc:4:20:p30HfwAxgDwv2iIGrQWU7y48OqxZgzq8dHH0kru9_I0:96"}}],"fulfillments":[{"fid":0,"fulfillment":null,"input":null,"owners_before":["CGofQAC6xdhATnwbQU1Nj3QALTve2nErHT2RCxjqa6Yk"]}],"metadata":null,"operation":null},"version":1}', 'utf8';
-
-sha256 = sha3.sha3_256(tx.encode()).hexdigest()
-
-# e6221b8ce703df98cd8385cfb3ebed7bc481f002725b24b7ac3aa4a47b6483a4
-```
-
-?????
+* [chloride](https://github.com/dominictarr/chloride), or its underlying [sodium](https://github.com/paixaop/node-sodium)
+  library
+* [node-sha3](https://github.com/phusion/node-sha3) -- **MAKE SURE** to use [steakknife's fork](https://github.com/steakknife/node-sha3)
+  if [the FIPS 202 upgrade](https://github.com/phusion/node-sha3/pull/25) hasn't been merged
+  (otherwise, you'll run into all kinds of hashing problems)
