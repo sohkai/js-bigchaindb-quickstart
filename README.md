@@ -73,9 +73,3 @@ sha256 = sha3.sha3_256(tx.encode()).hexdigest()
 ```
 
 ?????
-
-### tweetnacl-js doesn't provide 32-bit Ed25519 private keys
-
-For some reason, tweetnacl-js only generates [64-byte private keys](https://github.com/dchest/tweetnacl-js/blob/master/nacl.js#L876)
-for Ed25519 signature schemes while [five-bells-ledger only accepts 32-byte private keys](https://github.com/interledgerjs/five-bells-condition/blob/master/src/types/ed25519.js#L89).
-I guess you'll have to use another Ed25519 package?????

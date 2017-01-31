@@ -17,7 +17,9 @@ import uuid from 'uuid';
 export function Keypair() {
     const keyPair = nacl.sign.keyPair();
     this.publicKey = base58.encode(keyPair.publicKey);
-    this.privateKey = base58.encode(keyPair.secretKey);
+
+    // tweetnacl's generated secret key is the secret key + public key (resulting in a 64-byte buffer)
+    this.privateKey = base58.encode(keyPair.secretKey.slice(0, 32));
 }
 
 /**
