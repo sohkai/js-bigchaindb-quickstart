@@ -2,6 +2,10 @@
   "name": "js-bigchaindb-quickstart",
   "version": "0.0.1",
   "description": "Some quickstarting for BigchainDB with JavaScript (node + browser)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sohkai/js-bigchaindb-quickstart.git"
+  },
   "license": "¯\\_(ツ)_/¯",
   "author": "BigchainDB",
   "main": "index.js",
