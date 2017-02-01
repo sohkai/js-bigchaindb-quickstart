@@ -59,3 +59,17 @@ you'd rather go :godmode: with some :zap: :zap:, you can try using some of these
 * [node-sha3](https://github.com/phusion/node-sha3) -- **MAKE SURE** to use [steakknife's fork](https://github.com/steakknife/node-sha3)
   if [the FIPS 202 upgrade](https://github.com/phusion/node-sha3/pull/25) hasn't been merged
   (otherwise, you'll run into all kinds of hashing problems)
+
+## :rotating_light: WARNING WARNING WARNING :rotating_light:
+
+> Crypto-conditions
+
+Make sure you keep using a crypto-conditions implementation that implements the older v1 draft (e.g.
+[`five-bells-condition@v3.3.1`](https://github.com/interledgerjs/five-bells-condition/releases/tag/v3.3.1)).
+BigchainDB Server 0.9 does not implement the newer version of the spec and **WILL** fail if you to
+use a newer implementation of crypto-conditions.
+
+> SHA3
+
+Make sure to use a SHA3 implementation that has been upgraded as per [FIPS 202](http://csrc.nist.gov/publications/drafts/fips-202/fips_202_draft.pdf).
+Otherwise, the hashes you generate **WILL** be invalid in the eyes of the BigchainDB Server.
