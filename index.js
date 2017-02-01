@@ -6,7 +6,6 @@ import cc from 'five-bells-condition';
 import nacl from 'tweetnacl';
 import sha3 from 'js-sha3';
 import stableStringify from 'json-stable-stringify';
-import uuid from 'uuid';
 
 /**
  * @class Keypair Ed25519 keypair in base58 (as BigchainDB expects base58 keys)
@@ -14,7 +13,7 @@ import uuid from 'uuid';
  * @property {string} publicKey
  * @property {string} privateKey
  */
-export function Keypair() {
+export function Ed25519Keypair() {
     const keyPair = nacl.sign.keyPair();
     this.publicKey = base58.encode(keyPair.publicKey);
 
@@ -23,10 +22,9 @@ export function Keypair() {
 }
 
 /**
- * Create an Ed25519 Cryptocondition from an Ed25519 public key to put into a transaction
- * @param {string} publicKey base58 encoded Ed25519 public key for the new "owner"
- * @returns {object} Ed25519 Condition in a format compatible with BigchainDB
- *                   Note: Assumes that 'cid' will be adjusted afterwards.
+ * Create an Ed25519 Cryptocondition from an Ed25519 public key to put into an Output of a Transaction
+ * @param {string} publicKey base58 encoded Ed25519 public key for the recipient of the Transaction
+ * @returns {object} Ed25519 Condition (that will need to wrapped in an Output)
  */
 export function makeEd25519Condition(publicKey) {
     const publicKeyBuffer = new Buffer(base58.decode(publicKey));
@@ -36,122 +34,123 @@ export function makeEd25519Condition(publicKey) {
     const conditionUri = ed25519Fulfillment.getConditionUri();
 
     return {
-        'amount': 1,
-        'condition': {
-            'cid': 0, // Will be adjusted after adding the condition to the transaction
-            'owners_after': [publicKey],
-            'uri': conditionUri,
-            'details': {
-                'signature': null,
-                'type_id': 4,
-                'type': 'fulfillment',
-                'bitmask': 32,
-                'public_key': publicKey,
-            },
+        'details': {
+            'signature': null,
+            'type_id': 4,
+            'type': 'fulfillment',
+            'bitmask': 32,
+            'public_key': publicKey,
         },
+        'uri': conditionUri,
     };
 }
 
 /**
- * Create an "empty" Ed25519 fulfillment from a ED25519 public key to put into a transaction.
- * This "mock" step is necessary in order for a transaction to be completely out so it can later
- * be serialized and signed.
- * @param {string} publicKey base58 encoded Ed25519 public key for the previous "owner"
- * @returns {object} Ed25519 Condition in a format compatible with BigchainDB
- *                   Note: Assumes that 'cid' will be adjusted afterwards.
+ * Create an Output from a Condition.
+ * Note: Assumes the given Condition was generated from a single public key (e.g. a Ed25519 Condition)
+ * @param {object} condition Condition (e.g. a Ed25519 Condition from `makeEd25519Condition()`)
+ * @param {number} amount Amount of the output
+ * @returns {object} An Output usable in a Transaction
  */
-export function makeEd25519Fulfillment(publicKey) {
+export function makeOutput(condition, amount = 1) {
     return {
-        'owners_before': [publicKey],
-        'fid': 0, // Will be adjusted after adding the fulfillment to the transaction
-        'input': null, // Will be filled out after adding the fulfillment to the transaction
-        'fulfillment': null, // Will be generated during signing
+        amount,
+        condition,
+        'public_keys': [condition.details.public_key],
     };
 }
 
 /**
- * Generate a `CREATE` transaction holding the `assetData`, `metaData`, `conditions`, and
- * `fulfillments`.
- * @param {object} assetData Asset's `data` property
- * @param {object=} metaData Metadata's `data` property
- * @param {object[]=} conditions Array of condition objectss to add to the transaction.
- *                               Think of these as the new "owners" of the asset after the transaction.
- *                               For `CREATE` transactions, this should usually just be an Ed25519
- *                               Condition generated from the creator's public key.
- * @param {object[]=} fulfillments Array of fulfillment objects to add to the transaction
- *                                 Think of these as proofs that you can manipulate the asset.
- *                                 For `CREATE` transactions, this should usually just be an
- *                                 Ed25519 Fulfillment generated from the creator's public key.
+ * Generate a `CREATE` transaction holding the `asset`, `metadata`, and `outputs`, to be signed by
+ * the `issuers`.
+ * @param {object} asset Created asset's data
+ * @param {object} metadata Metadata for the Transaction
+ * @param {object[]} outputs Array of Output objects to add to the Transaction.
+ *                           Think of these as the recipients of the asset after the transaction.
+ *                           For `CREATE` Transactions, this should usually just be a list of
+ *                           Outputs wrapping Ed25519 Conditions generated from the issuers' public
+ *                           keys (so that the issuers are the recipients of the created asset).
+ * @param {...string[]} issuers Public key of one or more issuers to the asset being created by this
+ *                              Transaction.
+ *                              Note: Each of the private keys corresponding to the given public
+ *                              keys MUST be used later (and in the same order) when signing the
+ *                              Transaction (`signTransaction()`).
  * @returns {object} Unsigned transaction -- make sure to call signTransaction() on it before
  *                   sending it off!
  */
-export function makeCreateTransaction(assetData, metadata, conditions, fulfillments) {
-    const asset = {
-        'id': uuid.v4(),
-        'data': assetData || null,
-        'divisible': false,
-        'updatable': false,
-        'refillable': false,
+export function makeCreateTransaction(asset, metadata, outputs, ...issuers) {
+    const assetDefinition = {
+        'data': asset || null,
     };
+    const inputs = issuers.map((issuer) => makeInputTemplate([issuer]));
 
-    return makeTransaction('CREATE', asset, metadata, conditions, fulfillments);
+    return makeTransaction('CREATE', assetDefinition, metadata, outputs, inputs);
 }
 
 /**
- * Generate a `TRANSFER` transaction holding the `assetData`, `metaData`, `conditions`, and
- * `fulfillments`.
- * @param {object} unspentTransaction Transaction you have control over (i.e. can fulfill its
- *                                    Condition).
- * @param {object=} metaData Metadata's `data` property
- * @param {object[]=} conditions Array of condition objects to add to the transaction
- *                               Think of these as the new "owners" of the asset after the transaction.
- *                               For `TRANSFER` transactions, this should usually just be an
- *                               Ed25519 Condition generated from the new owner's public key.
- * @param {object[]=} fulfillments Array of fulfillment objects to add to the transaction
- *                                 Think of these as proofs that you can manipulate the asset.
- *                                 For `TRANSFER` transactions, this should usually just be an
- *                                 Ed25519 Fulfillment generated from the creator's public key.
+ * Generate a `TRANSFER` transaction holding the `asset`, `metadata`, and `outputs`, that fulfills
+ * the `fulfilledOutputs` of `unspentTransaction`.
+ * @param {object} unspentTransaction Previous Transaction you have control over (i.e. can fulfill
+ *                                    its Output Condition)
+ * @param {object} metadata Metadata for the Transaction
+ * @param {object[]} outputs Array of Output objects to add to the Transaction.
+ *                           Think of these as the recipients of the asset after the transaction.
+ *                           For `TRANSFER` Transactions, this should usually just be a list of
+ *                           Outputs wrapping Ed25519 Conditions generated from the public keys of
+ *                           the recipients.
+ * @param {...number} fulfilledOutputs Indices of the Outputs in `unspentTransaction` that this
+ *                                     Transaction fulfills.
+ *                                     Note that the public keys listed in the fulfilled Outputs
+ *                                     must be used (and in the same order) to sign the Transaction
+ *                                     (`signTransaction()`).
  * @returns {object} Unsigned transaction -- make sure to call signTransaction() on it before
  *                   sending it off!
  */
-export function makeTransferTransaction(unspentTransaction, metadata, conditions, fulfillments) {
-    // Add transactionLinks to link fulfillments with previous transaction's conditions
-    // NOTE: Naively assumes that fulfillments are given in the same order as the conditions they're
-    //       meant to fulfill
-    fulfillments.forEach((fulfillment, index) => {
-        fulfillment.input = {
-            'cid': index,
+export function makeTransferTransaction(unspentTransaction, metadata, outputs, ...fulfilledOutputs) {
+    const inputs = fulfilledOutputs.map((outputIndex) => {
+        const fulfilledOutput = unspentTransaction.outputs[outputIndex];
+        const transactionLink = {
+            'output': outputIndex,
             'txid': unspentTransaction.id,
         };
+
+        return makeInputTemplate(fulfilledOutput.public_keys, transactionLink);
     });
 
-    const assetLink = { 'id': unspentTransaction.transaction.asset.id };
+    const assetLink = {
+        'id': unspentTransaction.operation === 'CREATE' ? unspentTransaction.id
+                                                        : unspentTransaction.asset.id
+    };
 
-    return makeTransaction('TRANSFER', assetLink, metadata, conditions, fulfillments);
+    return makeTransaction('TRANSFER', assetLink, metadata, outputs, inputs);
 }
 
 /**
- * Sign a transaction with the given `privateKey`s.
- * @param {object} transaction Transaction to sign
- * @param {...string} privateKeys base58 Ed25519 private keys.
- *                                Looped through once to iteratively sign any Fulfillments found in
+ * Sign the given `transaction` with the given `privateKey`s, returning a new copy of `transaction`
+ * that's been signed.
+ * Note: Only generates Ed25519 Fulfillments. Thresholds and other types of Fulfillments are left as
+ * an exercise for the user.
+ * @param {object} transaction Transaction to sign. `transaction` is not modified.
+ * @param {...string} privateKeys Private keys associated with the issuers of the `transaction`.
+ *                                Looped through to iteratively sign any Input Fulfillments found in
  *                                the `transaction`.
- * @returns {object} The original transaction, signed in-place.
+ * @returns {object} The signed version of `transaction`.
  */
 export function signTransaction(transaction, ...privateKeys) {
-    transaction.transaction.fulfillments.forEach((fulfillment, index) => {
+    const signedTx = clone(transaction);
+    signedTx.inputs.forEach((input, index) => {
         const privateKey = privateKeys[index];
         const privateKeyBuffer = new Buffer(base58.decode(privateKey));
-        const seriailizedTransaction = serializeTransactionWithoutFulfillments(transaction);
+        const serializedTransaction = serializeTransactionIntoCanonicalString(transaction);
 
         const ed25519Fulfillment = new cc.Ed25519();
-        ed25519Fulfillment.sign(new Buffer(seriailizedTransaction), privateKeyBuffer);
+        ed25519Fulfillment.sign(new Buffer(serializedTransaction), privateKeyBuffer);
         const fulfillmentUri = ed25519Fulfillment.serializeUri();
 
-        fulfillment.fulfillment = fulfillmentUri;
+        input.fulfillment = fulfillmentUri;
     });
 
-    return transaction;
+    return signedTx;
 }
 
 /*********************
@@ -161,39 +160,32 @@ export function signTransaction(transaction, ...privateKeys) {
 function makeTransactionTemplate() {
     return {
         'id': null,
-        'version': 1,
-        'transaction': {
-            'operation': null,
-            'conditions': [],
-            'fulfillments': [],
-            'metadata': null,
-            'asset': null,
-        },
+        'operation': null,
+        'outputs': [],
+        'inputs': [],
+        'metadata': null,
+        'asset': null,
+        'version': '0.9',
     };
 }
 
-function makeTransaction(operation, asset, metadata, conditions = [], fulfillments = []) {
+function makeInputTemplate(publicKeys = [], fulfills = null, fulfillment = null) {
+    return {
+        fulfillment,
+        fulfills,
+        'owners_before': publicKeys,
+    };
+}
+
+function makeTransaction(operation, asset, metadata = null, outputs = [], inputs = []) {
     const tx = makeTransactionTemplate();
     tx.operation = operation;
-    tx.transaction.asset = asset;
+    tx.asset = asset;
+    tx.metadata = metadata;
+    tx.inputs = inputs;
+    tx.outputs = outputs;
 
-    if (metadata) {
-        tx.transaction.metadata = {
-            'id': uuid.v4(),
-            'data': metadata,
-        };
-    }
-
-    tx.transaction.conditions.push(...conditions);
-    tx.transaction.conditions.forEach((condition, index) => {
-        condition.cid = index;
-    });
-
-    tx.transaction.fulfillments.push(...fulfillments);
-    tx.transaction.fulfillments.forEach((fulfillment, index) => {
-        fulfillment.fid = index;
-    });
-
+    // Hashing must be done after, as the hash is of the Transaction (up to now)
     tx.id = hashTransaction(tx);
     return tx;
 }
@@ -203,7 +195,11 @@ function makeTransaction(operation, asset, metadata, conditions = [], fulfillmen
  ****************/
 
 function hashTransaction(transaction) {
-    return sha256Hash(serializeTransactionWithoutFulfillments(transaction));
+    // Safely remove any tx id from the given transaction for hashing
+    const tx = { ...transaction };
+    delete tx.id;
+
+    return sha256Hash(serializeTransactionIntoCanonicalString(tx));
 }
 
 function sha256Hash(data) {
@@ -213,14 +209,12 @@ function sha256Hash(data) {
         .hex();
 }
 
-function serializeTransactionWithoutFulfillments(transaction) {
-    // BigchainDB creates transactions IDs and signs fulfillments by serializing transactions
-    // into a "canonical" format where the transaction id and each fulfillment URI are ignored and
-    // the remaining keys are sorted
+function serializeTransactionIntoCanonicalString(transaction) {
+    // BigchainDB signs fulfillments by serializing transactions into a "canonical" format where
+    // each fulfillment URI is removed before sorting the remaining keys
     const tx = clone(transaction);
-    delete tx.id;
-    tx.transaction.fulfillments.forEach((fulfillment) => {
-        fulfillment.fulfillment = null;
+    tx.inputs.forEach((input) => {
+        input.fulfillment = null;
     });
 
     // Sort the keys
