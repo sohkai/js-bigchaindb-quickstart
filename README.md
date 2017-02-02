@@ -7,10 +7,10 @@
 Some naive helpers to get you on your way to making some transactions :boom:, if you'd like to use
 [BigchainDB](https://github.com/bigchaindb/bigchaindb) with JavaScript.
 
-Aimed to support usage in browsers or node, but like every piece of :poop:, it might not. Use at
-your own risk :rocket:. At least I can tell you it's ES∞+, so you'll probably need a babel here and
-a bundler there, of which I expect you'll know quite well ([otherwise, go check out js-reactor
-:wink:](https://github.com/bigchaindb/js-reactor)).
+Aimed to support usage in browsers or node; if it doesn't, well, I don't know what to say except
+it's probably you :smirk:. Use at your own risk :rocket:. At least I can tell you it's ES∞+, so
+you'll probably need a babel here and a bundler there (or use [one of the built versions](./dist)),
+of which I expect you'll know quite well ([otherwise, go check out js-reactor :wink:](https://github.com/bigchaindb/js-reactor)).
 
 ## Getting started
 
