@@ -8,5 +8,11 @@
             'regenerator': false
         } ]
     ],
-    'sourceMaps': true
+    'sourceMaps': true,
+
+    'env': {
+        'cjs': {
+            'presets': ['latest']
+        }
+    }
 }
