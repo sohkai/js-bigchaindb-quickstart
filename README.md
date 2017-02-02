@@ -315,12 +315,18 @@ console.log(signedTransferTx);
 // you sent it to has validated the CREATE transaction you sent, you should now be able to cement
 // the TRANSFER of Pikachu to Brock by sending `signedTransferTx` to a node in the same federation.
 
-/***********************************************************
- *                                                         *
- *                 ~~~   CHALLENGE   ~~~                   *
- *                                                         *
- *   So who making the decentralized version of Pokemon?   *
- *                   (cause I want in)                     *
- *                                                         *
- ***********************************************************/
+
+
+=========================================================================================================
+
+
+
+                  /*************************************************************
+                   *                                                           *
+                   *                  ~~~   CHALLENGE   ~~~                    *
+                   *                                                           *
+                   *   So who's making the decentralized version of Pokemon?   *
+                   *                    (cause I want in)                      *
+                   *                                                           *
+                   *************************************************************/
 ```
