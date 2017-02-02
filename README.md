@@ -16,6 +16,8 @@ of which I expect you'll know quite well ([otherwise, go check out js-reactor :w
 
 Srs, just read through [index.js](./index.js) and see if you can make any sense of it.
 
+You may also be interested in a [long-form example with actual code](#example).
+
 The expected flow for making transactions:
 
 1. Go get yourself some keypairs! Just make a `new Keypair()` (or a whole bunch of them, nobody's
@@ -73,3 +75,252 @@ use a newer implementation of crypto-conditions.
 
 Make sure to use a SHA3 implementation that has been upgraded as per [FIPS 202](http://csrc.nist.gov/publications/drafts/fips-202/fips_202_draft.pdf).
 Otherwise, the hashes you generate **WILL** be invalid in the eyes of the BigchainDB Server.
+
+> Ed25519
+
+If you do end up replacing `tweetnacl` with `chloride` (or any other Ed25519 package), you might
+want to double check that it gives you a correct public/private (or verifying/signing, if they use
+that lingo) keypair.
+
+An example BigchainDB Server-generated keypair (encoded in base58):
+
+- Public: "DjPMHDD9JtgypDKY38mPz9f6owjAMAKhLuN1JfRAat8C"
+- Private: "7Gf5YRch2hYTyeLxqNLgTY63D9K5QH2UQ7LYFeBGuKvo"
+
+Your package should be able to take in the decoded version of the **private** key and return you the
+same **public** key (once you encode that to base58).
+
+-------
+
+## Example
+
+OK, OK, I gotcha, you'd rather see some *actual* code rather than a giant list of steps that don't
+mean anything. :point_down: is for you.
+
+```js
+import {
+    Ed25519Keypair,
+    makeEd25519Condition,
+    makeOutput,
+    makeCreateTransaction,
+    makeTransferTransaction,
+    signTransaction,
+} from 'js-bigchaindb-quickstart'; // Or however you'd like to import it
+
+/**********************
+ * CREATE transaction *
+ **********************/
+// First, create a keypair for our new friend, Ash (let's be real--who would you rather catch some
+// Pokemon: Alice or the Ketchum man himself?)
+const ash = new Ed25519Keypair();
+
+console.log(ash.publicKey); // something like "DjPMHDD9JtgypDKY38mPz9f6owjAMAKhLuN1JfRAat8C"
+console.log(ash.privateKey); // something like "7Gf5YRch2hYTyeLxqNLgTY63D9K5QH2UQ7LYFeBGuKvo"
+
+// Let's get an output and condition that lets Ash be the recipient of the new asset we're creating
+const ashCondition = new makeEd25519Condition(ash.publicKey);
+const ashOutput = new makeOutput(ashCondition);
+
+console.log(ashOutput);
+/* Something like
+{
+    "amount": 1,
+    "condition": {
+        "details": {
+            "signature": null,
+            "type_id": 4,
+            "type": "fulfillment",
+            "bitmask": 32,
+            "public_key": "DjPMHDD9JtgypDKY38mPz9f6owjAMAKhLuN1JfRAat8C"
+        },
+        "uri": "cc:4:20:vSfobaaMSP52nxnVkPiLMysCTR-t8JpjbWIdU6SvRYU:96"
+    },
+    "public_keys": [
+        "DjPMHDD9JtgypDKY38mPz9f6owjAMAKhLuN1JfRAat8C"
+    ]
+}
+*/
+
+// Let's make an asset, to pretend this isn't boring.
+const pokeAsset = {
+    'name': 'Pikachu',
+    'trait': 'Will never, ever, EVAARRR leave your back'
+};
+
+const noMetadata = null; // Let's ignore that meta-stuff for now
+
+// Now let's go give Ash his beloved Pikachu
+const createPokeTx = makeCreateTransaction(pokeAsset, noMetadata, [ashOutput], ash.publicKey);
+
+console.log(createPokeTx);
+/* Something like
+{
+    "id": "38acf7a938a39be335afc8e7300468b981a29813d52938104ba3badfe21470c9",
+    "operation": "CREATE",
+    "outputs": [
+        {
+            "amount": 1,
+            "condition": {
+                "details": {
+                    "signature": null,
+                    "type_id": 4,
+                    "type": "fulfillment",
+                    "bitmask": 32,
+                    "public_key": "DjPMHDD9JtgypDKY38mPz9f6owjAMAKhLuN1JfRAat8C"
+                },
+                "uri": "cc:4:20:vSfobaaMSP52nxnVkPiLMysCTR-t8JpjbWIdU6SvRYU:96"
+            },
+            "public_keys": [
+                "DjPMHDD9JtgypDKY38mPz9f6owjAMAKhLuN1JfRAat8C"
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "fulfillment": null,
+            "fulfills": null,
+            "owners_before": [
+                "DjPMHDD9JtgypDKY38mPz9f6owjAMAKhLuN1JfRAat8C"
+            ]
+        }
+    ],
+    "metadata": null,
+    "asset": {
+        "data": {
+            "name": "Pikachu",
+            "trait": "Will never, ever, EVAARRR leave your back"
+        }
+    },
+    "version": "0.9"
+}
+*/
+
+// Let's sign this thing to make it legit! (Let's call Ash the "issuer", but a registered PokeCorp
+// could be the one issuing instead)
+const signedCreateTx = signTransaction(createPokeTx, ash.privateKey);
+
+console.log(signedPokeTx);
+/* Something like
+{
+    "id": "38acf7a938a39be335afc8e7300468b981a29813d52938104ba3badfe21470c9",
+    "operation": "CREATE",
+    "outputs": [
+        {
+            "amount": 1,
+            "condition": {
+                "details": {
+                    "signature": null,
+                    "type_id": 4,
+                    "type": "fulfillment",
+                    "bitmask": 32,
+                    "public_key": "DjPMHDD9JtgypDKY38mPz9f6owjAMAKhLuN1JfRAat8C"
+                },
+                "uri": "cc:4:20:vSfobaaMSP52nxnVkPiLMysCTR-t8JpjbWIdU6SvRYU:96"
+            },
+            "public_keys": [
+                "DjPMHDD9JtgypDKY38mPz9f6owjAMAKhLuN1JfRAat8C"
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "fulfillment": "cf:4:vSfobaaMSP52nxnVkPiLMysCTR-t8JpjbWIdU6SvRYWj-cp1qb1vsTSt_775cGe-NQFxgyUQvcPx1nWkJRgXhMvTk2vN2QJU_nd2DgeTbIcWBF-8-N1SH2WqQLsXJLcP",
+            "fulfills": null,
+            "owners_before": [
+                "DjPMHDD9JtgypDKY38mPz9f6owjAMAKhLuN1JfRAat8C"
+            ]
+        }
+    ],
+    "metadata": null,
+    "asset": {
+        "data": {
+            "name": "Pikachu",
+            "trait": "Will never, ever, EVAARRR leave your back"
+        }
+    },
+    "version": "0.9"
+}
+*/
+
+// Alright, now you've got yourself a valid transaction and you can do some crazy thing like send it
+// over to a BigchainDB node. I'll leave that as an exercise for you ;).
+
+/************************
+ * TRANSFER transaction *
+ ************************/
+// Alright, let's get Ash some imaginary friends (remember Brock? Neither do I)
+const brock = new Ed25519Keypair(); // public: "H8ZVy61CCKh5VQV9nzzzggNW8e5CyTbSiegpdLqLSmqi", private: "5xoYuPP92pznaGZF9KLsyAdR5C7yDU79of1KA9UK4qKS"
+
+// Let's pretend that, for the sake of this example, Ash can actually part with Pikachu. Let's trade
+// Pikachu to Brock (we won't be getting anything back, but if it helps, you can pretend Brock'll
+// give Ash some help with his love life).
+const brockCondition = new makeEd25519Condition(brock.publicKey);
+const brockOutput = new makeOutput(brockCondition);
+
+// Let's create the TRANSFER transaction cementing this trade. We'll use the "unspent" CREATE
+// transaction that assigned Pikachu to Ash as an input to this TRANSFER.
+// Note that we'll keep ignoring that metadata stuff.
+// Also note that we could use either `createPokeTx` (unsigned) or `signedCreateTx` (signed) here
+// for the input transaction. Either way, we'll be fulfilling the first (and only) output set in it.
+const fulfilledOutputIndex = 0;
+const transferPokeTx = makeTransferTransaction(createPokeTx, noMetadata, [brockOutput], fulfilledOutputIndex);
+
+// OK, let's sign this TRANSFER (Ash has to, as he's the one currently in "control" of Pikachu)
+const signedTransferTx = signTransaction(transferPokeTx, ash.privateKey);
+
+console.log(signedTransferTx);
+/* If everything went well, you should get something like this
+{
+    "id": "0876962a40479e171135cd92dbae7f0216f2691561b56a579cff631371d4d128",
+    "operation": "TRANSFER",
+    "outputs": [
+        {
+            "amount": 1,
+            "condition": {
+                "details": {
+                    "signature": null,
+                    "type_id": 4,
+                    "type": "fulfillment",
+                    "bitmask": 32,
+                    "public_key": "H8ZVy61CCKh5VQV9nzzzggNW8e5CyTbSiegpdLqLSmqi"
+                },
+                "uri": "cc:4:20:76rNv-DAIjZC0-68Gl0KEuDpcJRpCAAQXxvVbTvQAxE:96"
+            },
+            "public_keys": [
+                "H8ZVy61CCKh5VQV9nzzzggNW8e5CyTbSiegpdLqLSmqi"
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "fulfillment": "cf:4:vSfobaaMSP52nxnVkPiLMysCTR-t8JpjbWIdU6SvRYU8UJKi0Oq7QoCXIHuiWEYzxfgVEYs9HHtDIWBSkq1uvMX6l7VKwUCrK93k6JMNVBA8djOa5UGfDDF49xLVEgQI",
+            "fulfills": {
+                "output": 0,
+                "txid": "38acf7a938a39be335afc8e7300468b981a29813d52938104ba3badfe21470c9"
+            },
+            "owners_before": [
+                "DjPMHDD9JtgypDKY38mPz9f6owjAMAKhLuN1JfRAat8C"
+            ]
+        }
+    ],
+    "metadata": null,
+    "asset": {
+        "id": "38acf7a938a39be335afc8e7300468b981a29813d52938104ba3badfe21470c9"
+    },
+    "version": "0.9"
+}
+*/
+
+// Assuming you figured out how to send a transaction to a BigchainDB node, and that the federation
+// you sent it to has validated the CREATE transaction you sent, you should now be able to cement
+// the TRANSFER of Pikachu to Brock by sending `signedTransferTx` to a node in the same federation.
+
+/***********************************************************
+ *                                                         *
+ *                 ~~~   CHALLENGE   ~~~                   *
+ *                                                         *
+ *   So who making the decentralized version of Pokemon?   *
+ *                   (cause I want in)                     *
+ *                                                         *
+ ***********************************************************/
+```
