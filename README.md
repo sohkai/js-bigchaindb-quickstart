@@ -199,7 +199,7 @@ console.log(createPokeTx);
 // could be the one issuing instead)
 const signedCreateTx = signTransaction(createPokeTx, ash.privateKey);
 
-console.log(signedPokeTx);
+console.log(signedCreateTx);
 /* Something like
 {
     "id": "38acf7a938a39be335afc8e7300468b981a29813d52938104ba3badfe21470c9",
