@@ -1,5 +1,9 @@
 # JavaScript quickstart for BigchainDB
 
+### :bangbang::rotating_light:This repo has been deprecated in favour of [js-bigchaindb-driver](https://github.com/bigchaindb/js-bigchaindb-driver). Please use the officially maintained repo.:bangbang::rotating_light:
+
+----------------------------------------
+
 > :bangbang: High chance of :fire: and :rage: ahead if you expect this to be production-ready.
 
 > :bangbang: **ONLY** (and I mean **_only_**) supports BigchainDB Server 0.9
